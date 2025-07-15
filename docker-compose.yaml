@@ -6,9 +6,8 @@ services:
       - "3307:3306"
     volumes:
       - ./mariadb/data/:/var/lib/mysql:Z
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: culturallm_db
+    env_file:
+      - mariadb/.env
 
   backend:
     build: ./backend
@@ -17,22 +16,18 @@ services:
     container_name: culturallm-backend
     ports: 
       - "8003:8003"
-    environment:
-      DB_HOST: culturallm-db
-      DB_PORT: 3306
-      DB_USER: user
-      DB_PASSWORD: userpassword
-      DB_NAME: culturallm_db
+    env_file:
+      - backend/.env
     depends_on: 
       mariadb:
         condition: service_healthy
 
-
-
-# volumes:
-# - /home/backend/fullchain.pem:/fullchain.pem:ro
-# - /home/backend/privkey.pem:/privkey.pem:ro
-
-# certiicates     
-# --ssl-keyfile /privkey.pem
-# --ssl-certfile /fullchain.pem
+  nlp:
+    build: ./nlp
+    command: >
+      uvicorn nlp:app --host 0.0.0.0 --port 8004
+    container_name: culturallm-nlp
+    ports:
+      - "8004:8004"
+    env_file:
+      - nlp/.env

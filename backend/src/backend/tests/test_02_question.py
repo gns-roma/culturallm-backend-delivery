@@ -78,7 +78,7 @@ def test_login():
 @pytest.mark.order(5)
 def test_submit_question():
     for header in headers:
-        payload = {"question": "Domanda di cultura generale", "topic": "arte"}
+        payload = {"question": "Chi ha dipinto la capella Sistina", "topic": "arte"}
         response = client.post("/questions/", params={"type":"human"}, json=payload, headers=header)
         assert response.status_code == 201
         response = client.post("/questions/", params={"type": "human"}, json = payload)
@@ -108,7 +108,7 @@ def test_get_answers_and_validate():
         if response.status_code == 200:
             answers = response.json()
             assert isinstance(answers, List)
-            print(f"Answers for question {question_id}:", answers)
+
             if answers:
                 for answer in answers:
                     answer_id = answer["id"]
@@ -125,7 +125,7 @@ def test_get_validations():
         if validations_response.status_code == 200:
             validations = validations_response.json()
             assert isinstance(validations, List)
-            print(f"Validations for answer {answer_id}:", validations)
+        
 
 
 @pytest.mark.order(9)

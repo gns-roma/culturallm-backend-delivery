@@ -16,9 +16,13 @@ from exceptions import request_validation_exception_handler
 
 db_host = os.getenv("DB_HOST", "culturallm-db")
 db_port = int(os.getenv("DB_PORT", 3306))
-db_user = os.getenv("DB_USER", "user")
-db_password = os.getenv("DB_PASSWORD", "userpassword")
+db_user = os.getenv("DB_USER" , "")
+db_password = os.getenv("DB_PASSWORD", "")
 db_name = os.getenv("DB_NAME", "culturallm_db")
+
+
+if not db_user or not db_password:
+    raise RuntimeError("Environment variables DB_USER and DB_PASSWORD must be set.")
 
 
 @asynccontextmanager

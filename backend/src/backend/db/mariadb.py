@@ -14,12 +14,12 @@ def db_connection():
 
 
 def execute_query(
-        connection: mariadb.Connection, 
-        query: str, 
-        params: tuple = (), 
-        fetchone: bool = False,
-        fetch: bool = True, 
-        dict: bool = False
+    connection: mariadb.Connection, 
+    query: str, 
+    params: tuple = (), 
+    fetchone: bool = False,
+    fetch: bool = True, 
+    dict: bool = False
 ):
     """Execute a query and return the results if there are"""
     try:
@@ -32,12 +32,15 @@ def execute_query(
                 results = cursor.fetchall()
             else:
                 results = None
-            
+
             if query.strip().upper().startswith(("INSERT", "UPDATE", "DELETE")):
                 connection.commit()
+                if query.strip().upper().startswith("INSERT"):
+                    return cursor.lastrowid  # 👈 Restituisce l'ID per INSERT
 
     except mariadb.Error as e:
         raise HTTPException(status_code=500, detail=f"Errore nell'esecuzione della query: {e}")
     
     return results
+
 

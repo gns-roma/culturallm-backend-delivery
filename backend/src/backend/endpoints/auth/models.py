@@ -5,7 +5,7 @@ from pydantic import BaseModel, EmailStr, Field, model_validator
 class SignupRequest(BaseModel):
     username: str = Field(..., min_length=1)
     email: EmailStr
-    nation: str
+    nation: str | None = None
     password: str = Field(
         ...,
         min_length=12,

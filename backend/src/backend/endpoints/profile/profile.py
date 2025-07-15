@@ -9,6 +9,10 @@ from endpoints.auth.auth import get_current_user
 from db.mariadb import db_connection, execute_query
 from endpoints.questions.models import Question
 from endpoints.answers.models import Answer
+from endpoints.profile.models import ProfileSummary
+from endpoints.gamification.models import User
+from endpoints.gamification.leaderboard import get_user_position
+from endpoints.profile.levels import get_level_and_threshold    
 
 
 
@@ -26,19 +30,32 @@ generator = pydenticon.Generator(
 def profile(
     current_user: Annotated[str, Depends(get_current_user)], 
     db: Annotated[mariadb.Connection, Depends(db_connection)]
-) -> dict:
-    """
-    Retrieve the profile of the current user.
-    """
+) -> ProfileSummary:
+ 
     get_query = """
-        SELECT username, email, signup_date, last_login, nation
-        FROM users 
-        WHERE username = ?
+        SELECT u.username, u.email, u.signup_date, u.last_login, u.nation,COUNT(q.id) AS num_questions,COUNT(a.id) AS num_answers
+        FROM users u LEFT JOIN questions q ON q.user_id = u.id LEFT JOIN answers a ON a.user_id = u.id
+        WHERE u.username = ?
+        GROUP BY u.id;
     """
-    result = execute_query(db, get_query, (current_user,), dict=True, fetchone=True)
+    try:
+        result = execute_query(db, get_query, (current_user,), dict=True, fetchone=True)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Errore DB: {e}")
+    
     if not result:
         raise HTTPException(status_code=404, detail="User not found")
-    return result
+    
+    user_rank : User = get_user_position(db, current_user)
+    if not user_rank:
+        raise HTTPException(status_code=404, detail="User data not found")
+    result["rank"] = user_rank.position 
+    result["score"]= user_rank.score 
+    result["level"] = get_level_and_threshold(user_rank.score)["level"]
+    result["level_threshold"] = get_level_and_threshold(user_rank.score)["next_threshold"]
+
+    return ProfileSummary(**result)
+
 
 
 @router.put("/edit/")
@@ -143,7 +160,7 @@ def get_user_questions(
 @router.get("/answers")
 def get_user_answers(
     current_user: Annotated[str, Depends(get_current_user)],
-    db: Annotated[mariadb.Connection, Depends(db_connection)])-> List[Question]:
+    db: Annotated[mariadb.Connection, Depends(db_connection)])-> List[Answer]:
 
     if current_user is None:
         return Response(status_code=401, content="Unauthorized: User must be logged in to submit a human question.")
@@ -164,4 +181,7 @@ def get_user_answers(
     if rows is None:
         raise HTTPException(status_code=404, detail="Nessuna risposta trovata per l'utente.")
     
-    return [Question(**row) for row in rows]
+    return [Answer(**row) for row in rows]
+
+
+

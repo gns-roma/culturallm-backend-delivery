@@ -10,13 +10,20 @@ def get_topics():
     Retrieve a list of available topics.
     """
     # TODO: Rimpiazzare con richiesta di un topic all'IA
-    topics = [
-        "cibo",
-        "sport",
-        "cinema",
-        "musica",
-    ]
-    return {"topics": topics}
+    topics = {
+        "arte": "Arte e Architettura",
+        "letteratura": "Letteratura",
+        "cinema": "Cinema e Televisione",
+        "musica": "Musica",
+        "cibo": "Cibo e Tradizioni Gastronomiche",
+        "storia": "Storia e Personaggi Storici",
+        "lingua": "Lingua e Dialetti",
+        "sport": "Sport e Cultura Popolare",
+        "geografia": "Geografia e Regioni",
+        "folclore": "Folclore, Feste e Religione"
+    }
+
+    return topics
 
 
 @router.get("/topics/random")
@@ -26,4 +33,5 @@ def get_random_topic():
     """
     import random
     topics = get_topics()
-    return {"topic": random.choice(topics["topics"])}
+    random_topic = random.choice(list(topics.keys()))
+    return {"topic": random_topic, "name": topics[random_topic]}

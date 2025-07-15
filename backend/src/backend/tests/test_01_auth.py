@@ -72,11 +72,19 @@ def test_profile():
     headers = {"Authorization": f"Bearer {access_token}"}
     print(headers)
     response = client.get("/profile/", headers=headers)
+    print(response.status_code)
+    print(response.json())
     assert response.status_code == 200
     assert response.json() == {
         "username": "sorcarlo", 
         "email": "carlo.verdone1927@gmail.com", 
         "signup_date": response.json()["signup_date"], 
         "last_login": response.json()["last_login"],
-        "nation": "Italia"
+        "nation": "Italia",
+        "level": 1,
+        "level_threshold": 100,
+        "num_questions": 0,
+        "num_answers": 0,
+        "score": 0,
+        "rank": 1
     }

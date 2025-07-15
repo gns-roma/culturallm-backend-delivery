@@ -2,6 +2,18 @@ USE culturallm_db;
 
 
 DELIMITER //
+CREATE OR REPLACE TRIGGER trg_leaderboard_insert
+AFTER INSERT ON users
+FOR EACH ROW
+BEGIN
+  INSERT IGNORE INTO leaderboard (user_id, score, num_ratings, num_questions, num_answers)
+  VALUES (NEW.id, 0, 0, 0, 0);
+END;//
+DELIMITER ;
+
+
+
+DELIMITER //
 CREATE OR REPLACE TRIGGER trg_logs_reports
 AFTER INSERT ON reports
 FOR EACH ROW
@@ -17,16 +29,23 @@ DELIMITER ;
 
 
 DELIMITER //
-CREATE OR REPLACE TRIGGER trg_logs_questions
-AFTER INSERT ON questions
+CREATE TRIGGER trg_logs_questions_update
+AFTER UPDATE ON questions
 FOR EACH ROW
 BEGIN
-  IF NEW.user_id IS NOT NULL THEN
+  IF 
+    NEW.cultural_specificity IS NOT NULL AND
+    OLD.cultural_specificity IS NULL AND
+    NEW.user_id IS NOT NULL
+  THEN
     INSERT IGNORE INTO logs (user_id, score, action_type, timestamp)
     VALUES (NEW.user_id, NEW.cultural_specificity, 'question', NOW());
   END IF;
 END;//
 DELIMITER ;
+
+
+
 
 
 DELIMITER //
@@ -76,15 +95,11 @@ BEGIN
 END;//
 DELIMITER ;
 
-
 DELIMITER //
 CREATE OR REPLACE TRIGGER trg_leaderboard_update
 AFTER INSERT ON logs
 FOR EACH ROW
 BEGIN
-  INSERT IGNORE INTO leaderboard (user_id, score, num_ratings, num_questions, num_answers)
-  VALUES (NEW.user_id, 0, 0, 0, 0);
-
   UPDATE leaderboard
   SET score        = score + NEW.score,
       num_ratings  = num_ratings  + CASE WHEN NEW.action_type = 'rating'  THEN 1 ELSE 0 END,

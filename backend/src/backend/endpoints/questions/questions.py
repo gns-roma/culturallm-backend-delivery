@@ -1,5 +1,5 @@
 from typing import Annotated, Literal, Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, BackgroundTasks
 import mariadb
 
 from endpoints.questions.models import Question, QuestionValues
@@ -7,6 +7,7 @@ from db.mariadb import db_connection, execute_query
 from endpoints.auth.auth import get_current_user
 from endpoints.answers.models import Answer
 from endpoints.validate.models import RatingRequest
+from endpoints.questions.questions_nlp import evaluate_coherence_qt, evaluate_cultural_background, answer_question
 
 
 router = APIRouter(prefix="/questions", tags=["questions"])
@@ -15,6 +16,7 @@ router = APIRouter(prefix="/questions", tags=["questions"])
 @router.post("/")
 def submit_question(
     data: QuestionValues,
+    background_tasks: BackgroundTasks,
     db: Annotated[mariadb.Connection, Depends(db_connection)],
     current_user: Annotated[Optional[str], Depends(get_current_user)] = None,
     type: Literal["human", "llm"] = "human"
@@ -28,8 +30,7 @@ def submit_question(
     username = current_user if type == "human" else None
     # TODO: Si potrebbe aggiungere un controllo per evitare domande duplicate, anche se poco probabile
     # che due utenti scrivano la stessa domanda
-    # TODO: Nella query dovremo anche inserire la valutazione dell'IA della domanda che deve essere un 
-    # integer da 1 a 10, più un commento opzionale sulla domanda
+
     query_user = """
         SELECT id
         FROM users 
@@ -52,9 +53,35 @@ def submit_question(
 
     #Oppure potremmo inserirla, farla validare e in modo asincrono aggiornare la riga
     try:
-        execute_query(db, insert_query, params, fetch=False)
+        question_id = execute_query(db, insert_query, params, fetch=False)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Errore inserimento domanda")
+    
+    if question_id is None:
+        raise HTTPException(status_code=500, detail="Errore interno: question_id non valido")
+    
+    
+    background_tasks.add_task(evaluate_cultural_background, data.question, db, question_id)
+    background_tasks.add_task(evaluate_coherence_qt, question_id, data.question, data.topic, db)
+
+    query_evaluate = """
+        SELECT cultural_specificity, coherence_qt
+        FROM questions
+        WHERE id = ?
+    """
+    params_evaluate = (question_id,)
+    try:
+        row = execute_query(db, query_evaluate, params_evaluate, fetchone=True, dict=True)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Errore durante la valutazione della domanda")
+    
+    if row is None:
+        raise HTTPException(status_code=404, detail="Domanda non trovata dopo l'inserimento")
+    
+    if row['cultural_specificity'] >= 4 and row['coherence_qt']:
+        # Se la domanda ha una specificità culturale alta e una coerenza con il topic, rispondi subito
+        background_tasks.add_task(answer_question, question_id, data.question, 1, db)
+
     return Response(status_code=201)
 
 
@@ -75,6 +102,9 @@ def get_random_question_to_answer(
         )
     if type == "human":
         username = current_user
+    else:
+        username = ""
+        
     #Ritorna una domanda casuale che non è stata ne scritta ne a cui l'utente ha già risposto
 
     select_query = """

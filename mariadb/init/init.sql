@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS questions (
     topic VARCHAR(255) NOT NULL,
     cultural_specificity INT NOT NULL DEFAULT 0 CHECK (cultural_specificity BETWEEN 0 AND 10),
     cultural_specificity_notes TEXT,
-    tag TEXT,
+    coherence_qt BOOLEAN,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE NO ACTION 
 );
 
@@ -39,7 +39,9 @@ CREATE TABLE IF NOT EXISTS answers (
     user_id INT, -- può essere null se per LLM
     type ENUM('human', 'llm') NOT NULL DEFAULT 'human',
     answer TEXT NOT NULL,
-    timestamp DATETIME NOT NULL,
+    coherence_qa BOOLEAN,
+    validity INT NOT NULL DEFAULT 0 CHECK (validity BETWEEN 0 AND 5),
+    validity_notes TEXT,
     UNIQUE (question_id, user_id),
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE NO ACTION

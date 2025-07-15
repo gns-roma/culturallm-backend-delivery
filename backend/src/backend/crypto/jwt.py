@@ -1,13 +1,17 @@
+import os
 import jwt
 from datetime import datetime, timedelta, timezone
 
 from crypto.models import TokenExpired, TokenInvalid, TokenMissing
 
-SECRET_KEY = "ade80556c6e8ce1fa9c1b15a46e1c345d7423fde8c6c0c471a90d54cbe9eee5a"
-REFRESH_SECRET_KEY = "e1afea2d3cf36ec7233b5e1114dc35ed179d5075fd47328f6ba8d8f07121a4d5"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+REFRESH_SECRET_KEY = os.getenv("JWT_REFRESH_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+if not SECRET_KEY or not REFRESH_SECRET_KEY:
+    raise RuntimeError("Environment variables JWT_SECRET_KEY and JWT_REFRESH_SECRET_KEY must be set.")
 
 #encode data in a token
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:

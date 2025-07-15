@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, Response, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Response, HTTPException
 from typing import Annotated, Literal, Optional, List
 from fastapi.routing import APIRoute
 import mariadb
+from endpoints.answers.answers_nlp import evaluate_coherence_qa, evaluate_validity
 from db.mariadb import db_connection, execute_query
 from endpoints.auth.auth import get_current_user
 from endpoints.validate.models import Rating
@@ -13,6 +14,7 @@ router = APIRouter(prefix="/answers", tags=["answers"])
 @router.post("/")
 def submit_answer(
     data : AnswerValues,
+    background_tasks: BackgroundTasks,
     db: Annotated[mariadb.Connection, Depends(db_connection)],
     current_user: Annotated[Optional[str], Depends(get_current_user)] = None,
     type: Literal["human", "llm"] = "human"
@@ -31,15 +33,16 @@ def submit_answer(
 
     # Controllo domanda esistente
     question_query = """
-        SELECT id
+        SELECT id, question
         FROM questions 
         WHERE id = ?
     """
-    question_check = execute_query(db, question_query, (data.question_id,), fetchone=True)
+    question_check = execute_query(db, question_query, (data.question_id,), fetchone=True, dict=True)
     print(question_check, flush=True)
     print(f"Question check for id={data.question_id}: {question_check}")
     if not question_check:
         raise HTTPException(status_code=404, detail="Domanda non trovata")
+    
     query_user = """
         SELECT id
         FROM users 
@@ -55,16 +58,36 @@ def submit_answer(
     user_id = user_check['id'] if user_check else None
 
     insert_query = """
-        INSERT INTO answers (question_id, user_id, type, answer, timestamp) 
-        VALUES (?, ?, ?, ?, NOW())
+        INSERT INTO answers (question_id, user_id, type, answer) 
+        VALUES (?, ?, ?, ?)
     """
     params = (data.question_id, user_id, type, data.answer)
 
     try:
-        execute_query(db, insert_query, params, fetch=False)
+        answer_id = execute_query(db, insert_query, params, fetch=False)
     except Exception as e:
         print(f"Errore durante l'inserimento risposta: {e}")
         raise HTTPException(status_code=500, detail="Errore interno durante l'inserimento della risposta")
+    
+    if not answer_id:
+        raise HTTPException(status_code=500, detail="Errore interno durante l'inserimento della risposta")
+
+    # Aggiunta task in background per valutazione
+    background_tasks.add_task(
+        evaluate_validity,
+        answer=data.answer,
+        question=question_check['question'],
+        answer_id=answer_id,
+        db=db
+    )
+    background_tasks.add_task(
+        evaluate_coherence_qa,
+        answer=data.answer,
+        question=question_check['question'],
+        answer_id=answer_id,
+        db=db
+    )
+
     return Response(status_code=201)
 
 @router.get("/{answer_id}/validations")

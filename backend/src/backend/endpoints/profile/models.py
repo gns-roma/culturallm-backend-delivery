@@ -3,11 +3,18 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 
-class User(BaseModel):
+class ProfileSummary(BaseModel):
     username: str
     email: EmailStr
-    date: datetime
-    nation: str
+    signup_date: datetime
+    last_login: datetime
+    nation: str | None = None
+    level: int
+    level_threshold: int
+    num_questions: int
+    num_answers: int
+    score: int
+    rank: int
     #profile_picture: str | None = None
 
 class UpdateUserData(BaseModel):

@@ -7,24 +7,11 @@ from endpoints.gamification.models import User
 
 router = APIRouter(prefix="/leaderboard", tags=["leaderboard"])
 
-@router.get("/best")
-def get_best_leaderboard(db: Annotated[mariadb.Connection, Depends(db_connection)])-> List[User]:
-    select_query = """
-    SELECT u.username, l.score 
-    FROM leaderboard l JOIN users u ON l.user_id = u.id 
-    ORDER BY score DESC LIMIT 10"""
-    users = execute_query(db, select_query, dict = True)
-    if not users:
-        raise HTTPException(status_code=404, detail="No users found")
-    return [User(**user) for user in users]
-
-
-
 @router.get("/")
 def get_leaderboard(db: Annotated[mariadb.Connection, Depends(db_connection)])->List[User]:
     select_query = """
-    SELECT u.username, COALESCE(l.score, 0) AS score
-    FROM   users u LEFT JOIN leaderboard AS l ON u.id = l.user_id
+    SELECT u.username, l.score
+    FROM   users u JOIN leaderboard l ON u.id = l.user_id
     ORDER BY score DESC"""
     users = execute_query(db, select_query, dict = True)
     if not users:
@@ -36,7 +23,7 @@ def get_leaderboard(db: Annotated[mariadb.Connection, Depends(db_connection)])->
 @router.get("/user")
 def get_user_position(
     db: Annotated[mariadb.Connection, Depends(db_connection)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[str, Depends(get_current_user)],
 )->User:
     if current_user is None:
         raise HTTPException(
@@ -45,19 +32,18 @@ def get_user_position(
             headers={"WWW-Authenticate": "Bearer"},
         )
     username = current_user
-    select_query = """
-    SELECT u.username, l.score,
-        (SELECT COUNT(*) + 1
-         FROM leaderboard
-         WHERE score > l.score) AS position
+    select_query = """SELECT u.username, l.score,
+                (SELECT COUNT(*) + 1
+                FROM leaderboard l2 JOIN users u2 ON l2.user_id = u2.id
+                WHERE l2.score > l.score OR (l2.score = l.score AND u2.id < u.id)
+    ) AS position
     FROM leaderboard l JOIN users u ON l.user_id = u.id
-    WHERE u.username = ?
-    UNION ALL
-    SELECT username, 0, NULL
-    FROM users
-    WHERE username = ? AND username NOT IN (SELECT username FROM leaderboard JOIN users ON leaderboard.user_id = users.id)
-    """
-    user = execute_query(db, select_query, (username, username),fetchone=True, dict=True)
+    WHERE u.username = ?"""
+    try:
+        user = execute_query(db, select_query, (username,),fetchone=True, dict=True)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    
     if not user:
         raise HTTPException(status_code=404, detail="No user found")
     return User(**user)
