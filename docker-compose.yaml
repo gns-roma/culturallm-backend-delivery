@@ -1,0 +1,38 @@
+services: 
+  mariadb:
+    build: ./mariadb
+    container_name: culturallm-db
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./mariadb/data/:/var/lib/mysql:Z
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: culturallm_db
+
+  backend:
+    build: ./backend
+    command: >
+      uvicorn backend:app --host 0.0.0.0 --port 8003
+    container_name: culturallm-backend
+    ports: 
+      - "8003:8003"
+    environment:
+      DB_HOST: culturallm-db
+      DB_PORT: 3306
+      DB_USER: user
+      DB_PASSWORD: userpassword
+      DB_NAME: culturallm_db
+    depends_on: 
+      mariadb:
+        condition: service_healthy
+
+
+
+# volumes:
+# - /home/backend/fullchain.pem:/fullchain.pem:ro
+# - /home/backend/privkey.pem:/privkey.pem:ro
+
+# certiicates     
+# --ssl-keyfile /privkey.pem
+# --ssl-certfile /fullchain.pem
