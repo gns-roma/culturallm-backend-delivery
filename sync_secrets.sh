@@ -15,6 +15,7 @@ MODE_PUSH=false
 MODE_PULL=false
 LOAD_GH=false
 LOAD_VPS=false
+SSH_KEY=""
 
 # === PARSING ARGOMENTI ===
 while [[ $# -gt 0 ]]; do
@@ -25,7 +26,8 @@ while [[ $# -gt 0 ]]; do
     --vps)  LOAD_VPS=true; shift ;;
     -u|--user) VPS_USER="$2"; shift 2 ;;
     -h|--host) VPS_HOST="$2"; shift 2 ;;
-    *) echo "❌ Uso: $0 --push|--pull [--gh] [--vps] [-u user] [-h host]"; exit 1 ;;
+    -k|--key) SSH_KEY="$2"; shift 2 ;;
+    *) echo "❌ Uso: $0 --push|--pull [--gh] [--vps] [-u user] [-h host] [-k key]"; exit 1 ;;
   esac
 done
 
@@ -50,7 +52,11 @@ if $MODE_PULL; then
     REMOTE_FILE=${entry##* }
 
     echo "➡️  Scarico $REMOTE_FILE → $LOCAL_FILE"
-    scp -q "$VPS_USER@$VPS_HOST:$REMOTE_FILE" "$LOCAL_FILE"
+    
+    echo "💪 Eseguo: scp -q $VPS_USER@$VPS_HOST:$REMOTE_FILE $LOCAL_FILE"
+    # ${SSH_KEY:+-i "$SSH_KEY"} significa se SSH_KEY non è vuota allora la include nel comando
+    scp ${SSH_KEY:+-i "$SSH_KEY"} "$VPS_USER@$VPS_HOST:$REMOTE_FILE" "$LOCAL_FILE"
+    
     echo "✅ Scaricato $LOCAL_FILE"
   done
 fi

@@ -12,7 +12,7 @@ services:
   backend:
     build: ./backend
     command: >
-      uvicorn backend:app --host 0.0.0.0 --port 8003
+      uvicorn backend:app --host 0.0.0.0 --port 8003 --log-config log_config.yaml
     container_name: culturallm-backend
     ports: 
       - "8003:8003"
@@ -21,13 +21,3 @@ services:
     depends_on: 
       mariadb:
         condition: service_healthy
-
-  nlp:
-    build: ./nlp
-    command: >
-      uvicorn nlp:app --host 0.0.0.0 --port 8004
-    container_name: culturallm-nlp
-    ports:
-      - "8004:8004"
-    env_file:
-      - nlp/.env

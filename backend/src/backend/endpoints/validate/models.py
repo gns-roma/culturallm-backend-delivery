@@ -15,10 +15,3 @@ class RatingValues(BaseModel):
     question_id: int
     flag_ia: bool
 
-class Rating(BaseModel):
-    id: int
-    answer_id: int
-    question_id: int
-    username: str | None
-    rating: int = Field(..., ge=1, le=5)
-    flag_ia: bool

@@ -1,6 +1,7 @@
-echo "removing mariadb/data/ content..."
+echo "Removing contents of mariadb/data/..."
+
 if rm -rf mariadb/data/*; then
-    echo "everything has been cleaned up!"
+    echo "✅ Cleanup successful: all contents removed."
 else
-    echo "something went wrong while executing: rm -rf mariadb/data/*"
+    echo "❌ Error: failed to remove contents of mariadb/data/."
 fi

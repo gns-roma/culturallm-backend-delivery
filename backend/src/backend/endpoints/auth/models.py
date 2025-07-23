@@ -8,7 +8,7 @@ class SignupRequest(BaseModel):
     nation: str | None = None
     password: str = Field(
         ...,
-        min_length=12,
+        min_length=8,
         max_length=100,
         pattern=r'^[A-Za-z0-9!@#$%&+=*\-?.]+$',
         description="La password deve contenere solo lettere, numeri e i simboli ammessi: !@#$%&+=*-?.",

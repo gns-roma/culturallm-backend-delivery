@@ -1,18 +1,20 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, Response, HTTPException
 from typing import Annotated, Literal, Optional, List
-from fastapi.routing import APIRoute
 import mariadb
-from endpoints.answers.answers_nlp import evaluate_coherence_qa, evaluate_validity
+from endpoints.answers.answers_nlp import background_evaluation_pipeline
 from db.mariadb import db_connection, execute_query
-from endpoints.auth.auth import get_current_user
-from endpoints.validate.models import Rating
+from endpoints.auth.auth import get_current_user, get_current_user_id
 from endpoints.answers.models import AnswerValues
+import asyncio
+import logging
 
 
 router = APIRouter(prefix="/answers", tags=["answers"])
+logger = logging.getLogger("app")
+
 
 @router.post("/")
-def submit_answer(
+async def submit_answer(
     data : AnswerValues,
     background_tasks: BackgroundTasks,
     db: Annotated[mariadb.Connection, Depends(db_connection)],
@@ -20,42 +22,21 @@ def submit_answer(
     type: Literal["human", "llm"] = "human"
 ) -> Response:
     """
-    Submit an answer to a question.
+    Inserisci una risposta ad una domanda 
     """
+
     if type == "human" and current_user is None:
         raise HTTPException(
             status_code=401,
-            detail="Unauthorized: User must be logged in to answer a question.",
+            detail="Errore: l'utente deve essere loggato per poter rispondere ad una domanda.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    username = current_user if type == "human" else None
-
-    # Controllo domanda esistente
-    question_query = """
-        SELECT id, question
-        FROM questions 
-        WHERE id = ?
-    """
-    question_check = execute_query(db, question_query, (data.question_id,), fetchone=True, dict=True)
-    print(question_check, flush=True)
-    print(f"Question check for id={data.question_id}: {question_check}")
-    if not question_check:
-        raise HTTPException(status_code=404, detail="Domanda non trovata")
+    username = current_user if type == "human" else ""
+    if username is None:
+        username = ""
     
-    query_user = """
-        SELECT id
-        FROM users 
-        WHERE username = ?
-    """
-    params_user = (username,) if username else (None,)
-    try:
-        user_check = execute_query(db, query_user, params_user, fetchone=True, dict=True)
-    except Exception as e:
-        print(f"Errore durante l'inserimento risposta: {e}")
-        raise HTTPException(status_code=500, detail="Errore interno durante l'inserimento della risposta")
-
-    user_id = user_check['id'] if user_check else None
+    user_id = get_current_user_id(username, db)
 
     insert_query = """
         INSERT INTO answers (question_id, user_id, type, answer) 
@@ -63,45 +44,17 @@ def submit_answer(
     """
     params = (data.question_id, user_id, type, data.answer)
 
-    try:
-        answer_id = execute_query(db, insert_query, params, fetch=False)
-    except Exception as e:
-        print(f"Errore durante l'inserimento risposta: {e}")
-        raise HTTPException(status_code=500, detail="Errore interno durante l'inserimento della risposta")
+    answer_id = execute_query(db, insert_query, params, fetch=False)
     
     if not answer_id:
+        logger.info(f"answer_id={answer_id}")
         raise HTTPException(status_code=500, detail="Errore interno durante l'inserimento della risposta")
 
-    # Aggiunta task in background per valutazione
-    background_tasks.add_task(
-        evaluate_validity,
-        answer=data.answer,
-        question=question_check['question'],
-        answer_id=answer_id,
-        db=db
-    )
-    background_tasks.add_task(
-        evaluate_coherence_qa,
-        answer=data.answer,
-        question=question_check['question'],
-        answer_id=answer_id,
-        db=db
+    # Lancia la task asincrona senza bloccare
+    asyncio.create_task(
+        background_evaluation_pipeline(data.question_id, data.answer, answer_id, db)
     )
 
     return Response(status_code=201)
 
-@router.get("/{answer_id}/validations")
-def get_validations_to_answer(answer_id: int, db: Annotated[mariadb.Connection, Depends(db_connection)])->List[Rating]:
-    """
-    Retrieve ratings by its answer_ID.
-    """
-    select_query = """
-        SELECT r.id, r.answer_id, r.question_id, u.username, r.rating, r.flag_ia 
-        FROM ratings r JOIN users u ON r.user_id = u.id
-        WHERE answer_id = ?
-    """
-    params = (answer_id,)
-    rows = execute_query(db, select_query, params, dict=True)
-    if not rows:
-        raise HTTPException(status_code=404, detail="No answers found for the question")
-    return [Rating(**row) for row in rows]
+

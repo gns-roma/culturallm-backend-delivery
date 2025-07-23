@@ -3,15 +3,15 @@
 
 def fibonacci_threshold(level: int) -> int:
     """
-    Soglia di punti per un dato livello (Fibonacci * 100).
-    Livello 1 e 2 = 100 punti, poi segue Fibonacci.
+    Soglia di punti per un dato livello (Fibonacci * 50).
+    Livello 1 e 2 = 50 punti, poi segue Fibonacci.
     """
     if level <= 1:
-        return 100
+        return 50
     a, b = 1, 1
     for _ in range(2, level):
         a, b = b, a + b
-    return b * 100
+    return b * 50
 
 
 

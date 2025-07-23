@@ -7,12 +7,16 @@ class QuestionValues(BaseModel):
     question: str
     topic: str
 
-
-class Question(BaseModel):
+class QuestionBasic(BaseModel):
     id: int
-    type: Literal["human", "llm"]
-    username: str | None
     question: str
     topic: str
-    cultural_specificity: int | None = None
+
+class QuestionEvaluation(BaseModel):
+    id: int 
+    llm_id: int
+    question_id: int
+    cultural_specificity: int
     cultural_specificity_notes: str | None = None
+    coherence_qt: bool | None = None    
+

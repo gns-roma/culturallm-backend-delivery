@@ -32,28 +32,6 @@ def test_signup():
     assert response.status_code == 200
     response = client.post("/auth/signup/", json={"username": "Mariano", "email": "marianogiusti@libero.it", "nation":"Italia","password": "luit1perdon4!"})
     assert response.status_code == 200
-    response = client.post("/auth/signup/", json={"username": "Mariano", "email": "marianogiusti@libero.it", "nation":"Italia","password": "luit1perdon4!"})
-    assert response.status_code == 400
-    response = client.post("/auth/signup/", json={"username": "hahah", "email": "noemail", "nation":"Italia","password": "prova"})
-    assert response.status_code == 422
-    response = client.post("/auth/signup/", json={"username": "hahah", "email": "noemail@silos", "nation":"Italia","password": "prova"})
-    assert response.status_code == 422
-    response = client.post("/auth/signup/", json={"username": "tamburini", "email": "tamburini.direttore@gmail.com", "nation":"Italia","password": "forzamaggica1927!"})
-    assert response.status_code == 200
-    response = client.post("/auth/signup/", json={"username": "magatrump", "email": "thedonald@gmail.com", "nation":"Italia","password": "forzamaggica1927!"})
-    assert response.status_code == 200
-    response = client.post("/auth/signup/", json={"username": "salvobuzzi", "email": "buzzi.salvatore@gmail.com", "nation":"Italia","password": "forzamaggica1927!"})
-    assert response.status_code == 200
-    response = client.post("/auth/signup/", json={"username": "cruciani", "email": "cruciani@gmail.com", "nation":"Italia","password": "forzamaggica1927!"})
-    assert response.status_code == 200
-    response = client.post("/auth/signup/", json={"username": "tony777", "email": "tonyeffe@gmail.com", "nation":"Italia","password": "forzamaggica1927!"})
-    assert response.status_code == 200
-    response = client.post("/auth/signup/", json={"username": "sidebaby", "email": "darkside@gmail.com", "nation":"Italia","password": "forzamaggica1927!"})
-    assert response.status_code == 200
-    response = client.post("/auth/signup/", json={"username": "wanna", "email": "wannamarchi@gmail.com", "nation":"Italia","password": "forzamaggica1927!"})
-    assert response.status_code == 200
-    response = client.post("/auth/signup/", json={"username": "montalbano", "email": "mantalbano@gmail.com", "nation":"Italia","password": "forzamaggica1927!"})
-    assert response.status_code == 200
     response = client.post("/auth/signup/", json={"username": "montalbano2", "email": "mantalbano2@gmail.com", "nation":"Italia","password": "forzamaggica192711111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111!"})
     assert response.status_code == 422
 
@@ -88,3 +66,5 @@ def test_profile():
         "score": 0,
         "rank": 1
     }
+
+

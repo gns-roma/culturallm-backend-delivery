@@ -11,6 +11,7 @@ from endpoints.auth import auth
 from endpoints.answers import answers
 from endpoints.validate import validations
 from endpoints.gamification import leaderboard
+from endpoints.reports import reports
 from exceptions import request_validation_exception_handler
 
 
@@ -44,11 +45,8 @@ app.description = "API for managing CulturaLLM project."
 
 app.exception_handler(RequestValidationError)(request_validation_exception_handler)
 
-logger = logging.getLogger('uvicorn.error')
-logger.setLevel(logging.INFO)
-# se vogliamo attivare i log di debug possiamo settare il livello a logging.DEBUG
-# logger.setLevel(logging.DEBUG)
 
+app.include_router(reports.router)
 app.include_router(auth.router)
 app.include_router(profile.router)
 app.include_router(topics.router)

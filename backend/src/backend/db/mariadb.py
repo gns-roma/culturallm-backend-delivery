@@ -38,7 +38,7 @@ def execute_query(
                 if query.strip().upper().startswith("INSERT"):
                     return cursor.lastrowid  # 👈 Restituisce l'ID per INSERT
 
-    except mariadb.Error as e:
+    except Exception as e:
         raise HTTPException(status_code=500, detail=f"Errore nell'esecuzione della query: {e}")
     
     return results
